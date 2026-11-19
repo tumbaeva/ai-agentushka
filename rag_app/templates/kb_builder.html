@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Создать базу знаний — RAG Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◧</span>
+      <div>
+        <h1>Создать базу знаний</h1>
+        <p class="muted">{{ title }}</p>
+      </div>
+    </div>
+    <div class="status"><a href="/" style="color:var(--accent-2);text-decoration:none">← На главную</a></div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <section class="panel">
+        <h2>Загрузка документов</h2>
+        <div id="dropzone" class="dropzone">
+          Перетащите <b>.docx / .pdf / .txt / .md</b> сюда или
+          <label class="link">выберите<input type="file" id="fileInput" multiple hidden></label>
+          <p class="muted" style="margin-top:10px">Файлы сохраняются в папку <code>source_docs/</code>.</p>
+        </div>
+        <div id="uploadStatus" class="muted" style="margin-top:8px"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Сборка</h2>
+        <label class="check">
+          <input type="checkbox" id="useLlm"> обработать текст через LLM<span class="hint" data-tip="Если включено и настроен ключ GigaChat, каждый документ приводится к аккуратному Markdown. Без ключа текст берётся как есть.">?</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="useOcr"> OCR для сканов (PDF/DOCX)<span class="hint" data-tip="Если в файле нет текстового слоя (скан/картинки), распознать текст через OCR (rapidocr). Срабатывает только когда текста нет. Медленнее обычного извлечения.">?</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" id="useHeadings"> заголовки по смыслу (разделы ##)<span class="hint" data-tip="Разбивает текст документа на смысловые разделы: сначала эвристика (офлайн), затем LLM (если настроен ключ). Разделы появляются в цитатах и улучшают чанкинг. Без этого у документа один заголовок — имя файла.">?</span>
+        </label>
+        <div class="btn-wrap">
+          <button id="btnPreview" class="btn-violet">Собрать и предпросмотреть</button>
+          <span class="hint" data-tip="Собирает выбранные документы в один knowledge_base.md и показывает предпросмотр. Файл пока лежит отдельно.">?</span>
+        </div>
+        <div class="btn-wrap">
+          <button id="btnPromote" class="btn-green">Перенести в базу знаний</button>
+          <span class="hint" data-tip="Только копирует собранный knowledge_base.md в docs/ (файл базы знаний). Индекс пересобирается отдельно — «Пересоздать чанки» на главной (или при перезапуске).">?</span>
+        </div>
+        <div class="btn-wrap">
+          <button id="btnDownload">Скачать черновик</button>
+          <span class="hint" data-tip="Скачать собранный черновик knowledge_base.md.">?</span>
+        </div>
+        <div id="buildStatus" class="muted" style="margin-top:8px"></div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="panel">
+        <h2>Документы в source_docs<span class="hint" data-tip="Отметьте, какие файлы войдут в базу, задайте порядок следования (↑/↓) и удалите ненужные.">?</span></h2>
+        <div id="filesList"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Предпросмотр knowledge_base.md<span class="hint" data-tip="Результат сборки. Документы разделяются заголовками # …; подразделы — ## и глубже. Текст можно править вручную.">?</span></h2>
+        <div id="previewInfo" class="info-strip"></div>
+        <textarea id="previewText" class="kb-preview" spellcheck="false" placeholder="Здесь появится собранный knowledge_base.md — текст можно править вручную." style="width:100%;min-height:52vh;white-space:pre-wrap;overflow:auto;background:var(--input);border:1px solid var(--border);border-radius:8px;padding:14px;color:var(--text);font-family:Consolas,'Courier New',monospace;font-size:13px;line-height:1.5;resize:vertical"></textarea>
+        <div class="btn-group" style="margin-top:8px">
+          <button id="btnSaveDraft" class="btn-green">Сохранить изменения</button>
+          <span class="hint" data-tip="Сохраняет правки в черновик. При переносе в базу знаний будет использован отредактированный текст.">?</span>
+          <span id="editStatus" class="muted"></span>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='kb_builder.js') }}"></script>
+</body>
+</html>

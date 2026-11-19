@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-font="{{ profile.font_size }}"{% if profile.compact %} data-compact="1"{% endif %}>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} — конструктор AI-агента</title>
+  <link rel="icon" href="{{ url_for('agent.agent_favicon') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="agent-page">
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo" id="topLogo">🤖</span>
+      <div>
+        <h1 id="topName">{{ profile.agent_name }}</h1>
+        <p class="muted" id="topSubtitle">{{ profile.subtitle }}</p>
+      </div>
+    </div>
+    <div class="status">
+      <a href="/" style="color:var(--accent-2);text-decoration:none" id="backLink">← В дашборд</a>
+    </div>
+  </header>
+
+  <div class="layout agent-layout">
+    <aside class="sidebar">
+      <section class="panel">
+        <h2>Настройки агента</h2>
+
+        <div class="section">
+          <h3>1. Брендинг</h3>
+          <label>Название агента<input type="text" id="agentName" value="{{ profile.agent_name }}"></label>
+          <label>Подзаголовок<span class="hint" data-tip="Если оставить пустым — подставится название конкурса из дашборда.">?</span><input type="text" id="subtitle" value="{{ profile.subtitle }}" placeholder="{{ subtitle_default }}"></label>
+          <label>Тип логотипа
+            <select id="logoType">
+              <option value="emoji" {% if profile.logo_type == 'emoji' %}selected{% endif %}>Эмодзи</option>
+              <option value="initials" {% if profile.logo_type == 'initials' %}selected{% endif %}>Инициалы</option>
+              <option value="file" {% if profile.logo_type == 'file' %}selected{% endif %}>Файл</option>
+            </select>
+          </label>
+          <div class="row">
+            <label>Эмодзи<input type="text" id="logoEmoji" value="{{ profile.logo_emoji }}" maxlength="4"></label>
+            <label>Инициалы<input type="text" id="logoInitials" value="{{ profile.logo_initials }}" maxlength="4"></label>
+          </div>
+          <label>Логотип файлом<span class="hint" data-tip="PNG/JPG/SVG/ICO/WebP. Загружается в data/agent_assets.">?</span>
+            <input type="file" id="logoFile" accept=".png,.jpg,.jpeg,.webp,.gif,.ico,.svg">
+          </label>
+          <div id="assetStatus" class="muted" style="margin-top:6px"></div>
+        </div>
+
+        <div class="section">
+          <h3>2. Цвета</h3>
+
+          <h4 class="color-group">Пользователь</h4>
+          <div class="row">
+            <label>Цвет поля<span class="hint" data-tip="Фон сообщений пользователя, а также кнопок-вопросов и кнопки «Отправить».">?</span><input type="color" id="palUserBg" value="{{ profile.palette.user_bg }}"></label>
+            <label>Цвет шрифта<span class="hint" data-tip="Текст сообщений пользователя, кнопок-вопросов и кнопки «Отправить».">?</span><input type="color" id="palUserText" value="{{ profile.palette.user_text }}"></label>
+          </div>
+
+          <h4 class="color-group">Агент</h4>
+          <div class="row">
+            <label>Цвет поля<span class="hint" data-tip="Фон ответов агента и его эмблемы (лого).">?</span><input type="color" id="palAgentBg" value="{{ profile.palette.agent_bg }}"></label>
+            <label>Цвет шрифта<span class="hint" data-tip="Цвет текста ответов агента.">?</span><input type="color" id="palAgentText" value="{{ profile.palette.agent_text }}"></label>
+          </div>
+
+          <h4 class="color-group">Интерфейс</h4>
+          <div class="row">
+            <label>Цвет фона<span class="hint" data-tip="Фон страницы и панелей.">?</span><input type="color" id="palUiBg" value="{{ profile.palette.ui_bg }}"></label>
+            <label>Цвет поля<span class="hint" data-tip="Фон обычных кнопок и полей ввода.">?</span><input type="color" id="palUiField" value="{{ profile.palette.ui_field }}"></label>
+          </div>
+          <label>Цвет шрифта<span class="hint" data-tip="Основной текст и заголовки.">?</span><input type="color" id="palUiText" value="{{ profile.palette.ui_text }}"></label>
+          <label>Цвет подписи<span class="hint" data-tip="Цвет подписи (подзаголовка) под названием агента в шапке и предпросмотре.">?</span><input type="color" id="palUiSubtitle" value="{{ profile.palette.ui_subtitle }}"></label>
+
+          <h4 class="color-group">Палитры</h4>
+          <div class="row">
+            <label>Название<input type="text" id="paletteName" placeholder="Например, Фирменная"></label>
+            <label>Сохранённые<select id="paletteList"></select></label>
+          </div>
+          <div class="btn-group">
+            <button id="btnPaletteSave" type="button" class="btn-green">Сохранить</button>
+            <button id="btnPaletteDelete" type="button" class="btn-danger">Удалить</button>
+            <span class="muted" id="paletteStatus"></span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h3>3. Размеры и раскладка</h3>
+          <div class="row">
+            <label>Шрифт
+              <select id="fontSize">
+                <option value="S" {% if profile.font_size == 'S' %}selected{% endif %}>Мелкий</option>
+                <option value="M" {% if profile.font_size == 'M' %}selected{% endif %}>Обычный</option>
+                <option value="L" {% if profile.font_size == 'L' %}selected{% endif %}>Крупный</option>
+              </select>
+            </label>
+            <label>Кнопки
+              <select id="buttonSize">
+                <option value="small" {% if profile.button_size == 'small' %}selected{% endif %}>Мелкие</option>
+                <option value="normal" {% if profile.button_size == 'normal' %}selected{% endif %}>Обычные</option>
+                <option value="large" {% if profile.button_size == 'large' %}selected{% endif %}>Крупные</option>
+              </select>
+            </label>
+          </div>
+          <label>Скругление: <span id="radiusValue">{{ profile.radius }}</span> px</label>
+          <input type="range" id="radius" min="0" max="40" step="1" value="{{ profile.radius }}">
+          <label>Ширина сайдбара: <span id="sidebarValue">{{ profile.sidebar_width }}</span> px</label>
+          <input type="range" id="sidebarWidth" min="260" max="720" step="10" value="{{ profile.sidebar_width }}">
+          <label class="check"><input type="checkbox" id="compact" {% if profile.compact %}checked{% endif %}> компактный режим</label>
+        </div>
+
+        <div class="section">
+          <h3>4. Стиль ответа</h3>
+          <label>Готовый стиль
+            <select id="styleId">
+              {% for s in styles %}
+              <option value="{{ s.id }}" {% if profile.style_id == s.id %}selected{% endif %}>{{ s.label_ru }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>Креативность (temperature): <span id="tempValue">{{ profile.temperature }}</span></label>
+          <input type="range" id="temperature" min="0" max="1" step="0.05" value="{{ profile.temperature }}">
+          <label>Длина ответа
+            <select id="length">
+              <option value="short" {% if profile.length == 'short' %}selected{% endif %}>Краткий</option>
+              <option value="medium" {% if profile.length == 'medium' %}selected{% endif %}>Средний</option>
+              <option value="long" {% if profile.length == 'long' %}selected{% endif %}>Подробный</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="section">
+          <h3>5. Приветствие и подсказки</h3>
+          <label>Приветственное сообщение<textarea id="welcomeMessage" rows="2" placeholder="Здравствуйте! Чем помочь?">{{ profile.welcome_message }}</textarea></label>
+          <label>Стартовые вопросы (по одному в строке)<textarea id="starterQuestions" rows="3" placeholder="Какие сроки конкурса?">{{ starter_text }}</textarea></label>
+          <div class="row">
+            <label>Язык интерфейса
+              <select id="uiLanguage">
+                <option value="ru" {% if profile.ui_language == 'ru' %}selected{% endif %}>Русский</option>
+                <option value="en" {% if profile.ui_language == 'en' %}selected{% endif %}>English</option>
+              </select>
+            </label>
+            <label class="check" style="margin-top:22px"><input type="checkbox" id="showSources" {% if profile.show_sources %}checked{% endif %}> показывать источники</label>
+          </div>
+          <label>Телефон организаторов<span class="hint" data-tip="Показывается в ответе, когда бот не может ответить (нет данных или LLM недоступен).">?</span><input type="text" id="contactPhone" value="{{ profile.contact_phone }}" placeholder="+7 (999) 123-45-67"></label>
+        </div>
+
+        <div class="section">
+          <button id="btnSave" class="btn-green btn-block">Сохранить настройки</button>
+          <div id="saveStatus" class="muted" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <h3>6. Документ базы знаний</h3>
+          <div id="dropzone" class="dropzone">
+            Перетащите <b>.md / .txt / .docx</b> или
+            <label class="link">выберите<input type="file" id="docInput" hidden></label>
+            <p class="muted" style="margin-top:10px">Файл <code>knowledge_base.md</code> заменит базу целиком, остальные — добавятся как документ. Индекс пересоберётся автоматически.</p>
+          </div>
+          <div id="docStatus" class="muted" style="margin-top:8px"></div>
+        </div>
+
+        <div class="section">
+          <button id="btnExport" class="btn-violet btn-block">Экспорт приложения</button>
+          <div id="exportStatus" class="muted" style="margin-top:8px"></div>
+        </div>
+      </section>
+    </aside>
+
+    <main class="main">
+      <section class="panel">
+        <h2>Предпросмотр</h2>
+        <div class="agent-preview" id="agentPreview">
+          <div class="agent-head">
+            <span class="agent-avatar" id="prevLogo">🤖</span>
+            <div>
+              <div class="agent-title" id="prevName">{{ profile.agent_name }}</div>
+              <div class="muted" id="prevSubtitle">{{ profile.subtitle }}</div>
+            </div>
+          </div>
+          <div class="chat-messages" id="chatMessages"></div>
+          <div class="starter-chips" id="starterChips"></div>
+          <div class="chat-input">
+            <textarea id="chatText" rows="2" placeholder="Задайте вопрос по документам…"></textarea>
+            <button id="btnSend">Отправить</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Системный промпт<span class="hint" data-tip="Полный текст инструкции для модели. Заполняется автоматически по выбранному стилю; можно править вручную и сохранить.">?</span></h2>
+        <textarea id="systemPrompt" rows="11" class="prompt-preview" spellcheck="false" placeholder="Системная инструкция для агента…">{{ profile.system_prompt }}</textarea>
+        <p class="muted" style="margin-top:8px">Заполняется по выбранному стилю. Можно править вручную; сохраняется кнопкой «Сохранить настройки» слева.</p>
+      </section>
+    </main>
+  </div>
+
+  <script>window.__AGENT__ = {{ profile | tojson }};</script>
+  <script src="{{ url_for('static', filename='tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='agent.js') }}"></script>
+</body>
+</html>

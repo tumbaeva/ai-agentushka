@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rag-dashboard"
+version = "1.0.0"
+description = "Локальный RAG-помощник по базе знаний конкурса (образование/конкурсы)"
+requires-python = ">=3.10"
+readme = "README.md"
+dependencies = [
+  "flask>=3.0",
+  "werkzeug>=3.0",
+  "python-dotenv>=1.0",
+  "sentence-transformers>=3.0",
+  "faiss-cpu>=1.8",
+  "rank-bm25>=0.2.2",
+  "openai>=1.30",
+  "python-docx>=1.1",
+  "pypdf>=4.2",
+  "rapidocr-onnxruntime>=1.3",
+  "pypdfium2>=4.30",
+  "pillow>=10.0",
+  "numpy>=1.26,<2",
+  "matplotlib>=3.8",
+  "seaborn>=0.13",
+  "pandas>=2.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["rag_app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

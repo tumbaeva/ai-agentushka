@@ -1,0 +1,27 @@
+# Runtime dependencies of the standalone chat agent (minimal set).
+# No OCR, no plotting, no PDF tooling — those belong to the dashboard, not the agent.
+
+# --- Web ---
+flask>=3.0
+werkzeug>=3.0
+
+# --- Config / secrets ---
+python-dotenv>=1.0
+
+# --- Embeddings (downloads a public model on first run) ---
+sentence-transformers>=3.0
+
+# --- Vector search ---
+faiss-cpu>=1.8
+
+# --- BM25 ---
+rank-bm25>=0.2.2
+
+# --- LLM API (GigaChat via Cloud.ru) ---
+openai>=1.30
+
+# --- Document upload (.docx) ---
+python-docx>=1.1
+
+# --- Numerics ---
+numpy>=1.26,<2

@@ -1,0 +1,42 @@
+# Logs
+logs/
+*.log
+server_out.log
+server_err.log
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+
+# Virtualenv
+.venv/
+venv/
+
+# Application data (settings, index, chats, cached models)
+data/
+
+# Uploaded source documents for the KB builder
+source_docs/
+
+# Testing
+.pytest_cache/
+
+# Legacy search-model snapshots
+search_models/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+retrieval_heatmap.png

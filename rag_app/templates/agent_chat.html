@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}" data-font="{{ profile.font_size }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }}</title>
+  <link rel="icon" href="{{ url_for('agent.agent_favicon') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="agent-standalone">
+  <div class="agent-shell">
+    <header class="agent-head">
+      <span class="agent-avatar" id="agentLogo">{{ profile.logo_emoji }}</span>
+      <div>
+        <div class="agent-title" id="agentName">{{ profile.agent_name }}</div>
+        <div class="muted" id="agentSubtitle">{{ profile.subtitle }}</div>
+      </div>
+    </header>
+
+    <div class="chat-messages" id="chatMessages"></div>
+
+    <div id="indexStatus" class="index-status">Загрузка…</div>
+
+    <div class="starter-chips" id="starterChips"></div>
+
+    <div class="chat-input">
+      <textarea id="chatText" rows="2" placeholder="Задайте вопрос по документам…"></textarea>
+      <button id="btnSend">Отправить</button>
+    </div>
+  </div>
+
+  <script>window.__AGENT__ = {{ profile | tojson }};</script>
+  <script src="{{ url_for('static', filename='agent_chat.js') }}"></script>
+</body>
+</html>

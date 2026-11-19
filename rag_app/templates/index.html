@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RAG Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◧</span>
+      <div>
+        <h1>RAG Dashboard</h1>
+        <p class="muted">{{ title }}</p>
+      </div>
+    </div>
+    <div class="status" id="statusPill">загрузка…</div>
+  </header>
+
+  <div class="layout">
+    <!-- ================= Sidebar ================= -->
+    <aside class="sidebar">
+      <section class="panel">
+        <h2>Настройки</h2>
+
+        <div class="section">
+          <h3>1. Модель и чанкинг</h3>
+          <label>Модель эмбеддинга<span class="hint" data-tip="Модель, которой векторизуются чанки. BGE-M3 — лучше для русского, MiniLM — быстрее и легче.">?</span>
+            <select id="embModel"></select>
+          </label>
+          <div class="row">
+            <label>Chunk Size<span class="hint" data-tip="Размер чанка в символах. Больше — шире контекст, меньше — точнее попадания.">?</span><input type="number" id="chunkSize" value="700" min="200" step="50"></label>
+            <label>Overlap<span class="hint" data-tip="Перекрытие соседних чанков, чтобы не терять смысл на границах.">?</span><input type="number" id="chunkOverlap" value="120" min="0" step="10"></label>
+          </div>
+          <label>Источник (база знаний)<span class="hint" data-tip="knowledge_base.md — единый файл базы знаний. «Исходные документы» — поиск по всем файлам папки docs.">?</span>
+            <select id="source">
+              <option value="kb_md">knowledge_base.md</option>
+              <option value="files">Исходные документы</option>
+            </select>
+          </label>
+          <div class="btn-wrap">
+            <button id="btnRebuild" class="btn-green">Пересоздать чанки</button>
+            <span class="hint" data-tip="Пересобирает чанки и индекс по текущим настройкам и источнику.">?</span>
+          </div>
+          <div class="btn-wrap">
+            <button id="btnSaveModel" class="btn-green">Сохранить модель</button>
+            <span class="hint" data-tip="Сохраняет индекс (FAISS + чанки + метаданные) в data/index, чтобы при следующем запуске не пересчитывать.">?</span>
+          </div>
+          <div id="indexInfo" class="muted" style="margin-top:8px"></div>
+          <div id="rebuildStatus" class="muted" style="margin-top:4px"></div>
+
+          <h3 style="margin-top:16px">Сохранённые модели<span class="hint" data-tip="Снэпшоты индекса из data/index. «Применить» загружает выбранный индекс в память (мгновенно, без пересчёта эмбеддингов), «удалить» — стирает файлы.">?</span></h3>
+          <div id="snapshotsList" class="snap-list"></div>
+        </div>
+
+        <div class="section">
+          <h3>2. Слияние и rerank</h3>
+          <div class="row">
+            <label>RRF k<span class="hint" data-tip="Параметр слияния Reciprocal Rank Fusion. Больше — плавнее объединение вектора и BM25, меньше — резче.">?</span><input type="number" id="rrfK" value="60" min="1"></label>
+            <label>Reranker<span class="hint" data-tip="Cross-encoder, который пересортировывает найденных кандидатов по точной релевантности.">?</span><select id="rerankModel"></select></label>
+          </div>
+          <div class="row">
+            <label>Вес вектора<span class="hint" data-tip="Вклад векторного поиска в гибридное слияние.">?</span><input type="number" id="vectorWeight" value="1" step="0.1" min="0"></label>
+            <label>Вес BM25<span class="hint" data-tip="Вклад лексического поиска BM25 в гибридное слияние.">?</span><input type="number" id="bm25Weight" value="1" step="0.1" min="0"></label>
+          </div>
+          <label class="check"><input type="checkbox" id="enableRerank" checked> включить reranker<span class="hint" data-tip="Переранжирование кандидатов. Точнее, но медленнее.">?</span></label>
+        </div>
+
+        <div class="section">
+          <h3>3. Работа с запросом</h3>
+          <label class="check"><input type="checkbox" id="enableRewrite" checked> переформулировка запроса<span class="hint" data-tip="LLM делает синонимичные переформулировки запроса для режимов multi-query.">?</span></label>
+          <label class="check"><input type="checkbox" id="enableHyde"> HyDE (гипотетический ответ)<span class="hint" data-tip="Сначала генерируется гипотетический ответ, по нему ищется похожее. Помогает при коротких запросах.">?</span></label>
+          <label>Temperature (multi-query): <span id="tempMqValue">{{ default_temp_mq }}</span><span class="hint" data-tip="Температура переформулировки запроса. Влияет только на режимы multi_query / multi_query_rerank.">?</span></label>
+          <input type="range" id="tempMq" min="0" max="1" step="0.05" value="{{ default_temp_mq }}">
+          <p class="muted" style="margin-top:6px">Влияет на переформулировку запроса и HyDE.</p>
+        </div>
+
+        <div class="section">
+          <h3>4. Генерация ответов</h3>
+          <label>LLM-модель<span class="hint" data-tip="Модель для генерации ответов (GigaChat через Cloud.ru).">?</span><select id="llmModel"></select></label>
+          <label>API URL<span class="hint" data-tip="Адрес OpenAI-совместимого API. По умолчанию foundation-models.api.cloud.ru.">?</span><input type="text" id="llmBaseUrl" placeholder="https://..."></label>
+          <label>Temperature: <span id="tempValue">{{ default_temp }}</span><span class="hint" data-tip="Температура генерации ответа. Меньше — точнее и суше, больше — креативнее.">?</span></label>
+          <input type="range" id="temp" min="0" max="1" step="0.05" value="{{ default_temp }}">
+          <div class="btn-wrap">
+            <button id="btnSaveConfig" class="btn-green">Сохранить настройки</button>
+            <span class="hint" data-tip="Сохраняет все настройки в data/settings.json.">?</span>
+          </div>
+        </div>
+
+        <div class="section collapsible collapsed" id="secretsPanel">
+          <h3 class="panel-toggle" data-target="secretsPanel">API Секреты <span class="hint" data-tip="Ключи GigaChat (Cloud.ru) и HuggingFace. Хранятся в локальном файле .env.">?</span> <span class="chev">▸</span></h3>
+          <div class="panel-body">
+            <label>GIGACHAT_API_KEY_ID<span class="hint" data-tip="ID ключа Cloud.ru (используется, если секрет пуст).">?</span><input type="password" id="gigachatId" placeholder="Client ID..."></label>
+            <label>GIGACHAT_API_KEY_SECRET<span class="hint" data-tip="API-ключ из консоли Cloud.ru — уходит как Authorization: Bearer. Если его нет, генерация ответов недоступна.">?</span><input type="password" id="gigachatSecret" placeholder="Client Secret..."></label>
+            <label>HF_TOKEN<span class="hint" data-tip="Токен HuggingFace для gated-моделей (например, FRIDA).">?</span><input type="password" id="hfToken" placeholder="hf_..."></label>
+            <div class="btn-wrap">
+              <button id="btnSaveSecrets" class="btn-green">Сохранить в .env</button>
+              <span class="hint" data-tip="Записывает секреты в .env и сразу обновляет клиента LLM.">?</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </aside>
+
+    <!-- ================= Main ================= -->
+    <main class="main">
+      <nav class="tabs">
+        <a href="/kb-builder" class="tab">Создать базу знаний</a>
+        <button class="tab active" data-tab="docs">Документы</button>
+        <button class="tab" data-tab="analytics">Аналитика</button>
+        <button class="tab" data-tab="search">Поиск</button>
+        <a href="/recommendations" class="tab">Рекомендации</a>
+        <button class="tab" data-tab="chat">Чат</button>
+        <a href="/agent" class="tab">AI-агент</a>
+        <a href="/help" class="tab">Справка</a>
+      </nav>
+
+      <!-- Documents -->
+      <section class="tabpane active" id="pane-docs">
+        <div class="panel">
+          <h2>Документы базы знаний<span class="hint" data-tip="База знаний — один файл knowledge_base.md; внутри него может быть несколько документов (заголовки # …).">?</span></h2>
+          <div id="dropzone" class="dropzone">
+            База знаний — единый файл <code>knowledge_base.md</code>. Перетащите <b>.md / .txt</b>:
+            файл с именем <code>knowledge_base.md</code> <b>заменит базу целиком</b>, любой другой — добавится как документ.
+            <label class="link">выберите<input type="file" id="fileInput" multiple hidden></label>
+            <p class="muted" style="margin-top:10px">Конвертация .docx/.pdf в базу знаний выполняется отдельным инструментом.</p>
+          </div>
+          <h3 style="margin-top:6px">Документы внутри базы знаний<span class="hint" data-tip="knowledge_base.md — один файл, внутри него может быть много документов (каждый начинается с заголовка # …). «Удалить» убирает документ-раздел из этого файла.">?</span></h3>
+          <div id="docsList"></div>
+        </div>
+      </section>
+
+      <!-- Search -->
+      <section class="tabpane" id="pane-search">
+        <div class="panel">
+          <h2>Вопрос</h2>
+          <textarea id="query" placeholder="Введите вопрос..." style="min-height:100px"></textarea>
+          <div class="controls row" style="margin-top:12px">
+            <label>Режим<span class="hint" data-tip="Способ поиска: vector / bm25 / hybrid / multi_query / multi_query_rerank.">?</span><select id="mode"></select></label>
+            <label>k<span class="hint" data-tip="Сколько фрагментов вернуть.">?</span><input type="number" id="k" value="4" min="1" max="20"></label>
+          </div>
+          <div class="btn-group">
+            <button id="btnSearch">Поиск<span class="hint" data-tip="Показать найденные фрагменты без генерации.">?</span></button>
+            <button id="btnAnswer">Ответ<span class="hint" data-tip="Найти контекст и сгенерировать ответ LLM со ссылками на источники.">?</span></button>
+            <button id="btnCompare" class="btn-violet">Сравнение режимов<span class="hint" data-tip="Сравнить выдачу всех режимов поиска для одного запроса.">?</span></button>
+          </div>
+        </div>
+
+        <div id="answerPanel" class="panel hidden">
+          <h2>Ответ</h2>
+          <div id="answerContent"></div>
+        </div>
+
+        <div id="searchPanel" class="panel hidden">
+          <h2>Результаты поиска</h2>
+          <div id="searchInfo" class="info-strip"></div>
+          <div id="searchContent"></div>
+        </div>
+
+        <div id="comparePanel" class="panel hidden">
+          <h2>Сравнение режимов</h2>
+          <div id="compareContent"></div>
+        </div>
+      </section>
+
+      <!-- Analytics -->
+      <section class="tabpane" id="pane-analytics">
+        <div class="panel collapsible collapsed" id="questionsPanel">
+          <h2 class="panel-toggle" data-target="questionsPanel">Тестовые вопросы <span class="hint" data-tip="Набор вопросов с эталоном (релевантные документы + ключевые слова). По ним считаются метрики. Вопросы можно менять и сохранять. Нажмите заголовок, чтобы показать/скрыть.">?</span> <span class="chev">▸</span></h2>
+          <div class="panel-body">
+            <div id="questionsList"></div>
+            <div class="btn-group" style="margin-top:8px">
+              <button id="btnAddQuestion">Добавить вопрос</button>
+              <button id="btnGenerate" class="btn-violet">Придумать вопросы моделью<span class="hint" data-tip="Модель сгенерирует черновики вопросов по содержимому базы (температура повышена для разнообразия). Проверьте и поправьте перед сохранением.">?</span></button>
+              <button id="btnSaveQuestions" class="btn-green">Сохранить вопросы</button>
+            </div>
+            <div id="questionsStatus" class="muted" style="margin-top:6px"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Аналитика качества<span class="hint" data-tip="Метрики поиска (hit@k, recall@k, precision@k, mrr@k и др.) по тестовым вопросам.">?</span></h2>
+          <div class="analytics-head">
+            <button id="btnEval">Запустить оценку<span class="hint" data-tip="Считает метрики по всем режимам и строит тепловую карту.">?</span></button>
+            <button id="btnSaveEval" class="btn-green">Сохранить сравнение и карту<span class="hint" data-tip="Сохраняет метрики, карту и (если задан вопрос) сравнение режимов в data/eval.">?</span></button>
+            <span class="muted" id="evalStatus"></span>
+          </div>
+          <div id="evalSummary"></div>
+          <div id="heatmapWrap" class="heatmap-wrap hidden">
+            <div class="heatmap-figure">
+              <h3>Тепловая карта метрик</h3>
+              <img id="heatmapImg" class="heatmap" alt="Тепловая карта метрик поиска">
+            </div>
+            <aside class="metric-legend">
+              <h3>Что означают метрики<span class="hint" data-tip="Строки — режимы поиска, столбцы — метрики. Все значения нормированы 0…1, чем светлее — тем лучше.">?</span></h3>
+              <dl>
+                <dt>hit@k</dt><dd>Есть ли в топ-k хотя бы один релевантный чанк (0 или 1). «Нашли хоть что-то нужное».</dd>
+                <dt>doc_acc@k</dt><dd>Попал ли релевантный документ в топ-k (0 или 1). «Нашли нужный документ».</dd>
+                <dt>recall@k</dt><dd>Доля найденных релевантных чанков из всех релевантных в базе. «Полнота».</dd>
+                <dt>precision@k</dt><dd>Доля релевантных среди k найденных чанков. «Точность выдачи».</dd>
+                <dt>doc_precision@k</dt><dd>Доля релевантных документов среди найденных. «Мусор в документах».</dd>
+                <dt>mrr@k</dt><dd>1 / позиция первого релевантного в списке. Выше — когда ответ ближе к началу.</dd>
+                <dt>score_avg</dt><dd>Среднее hit@k, doc_acc@k, recall@k и mrr@k — сводная оценка конфигурации (используется в «Рекомендациях»).</dd>
+              </dl>
+            </aside>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Детали проверки<span class="hint" data-tip="Показывает, какие чанки нашлись для выбранного вопроса и режима и какие из них засчитаны релевантными (✅/❌).">?</span></h2>
+          <div class="row">
+            <label>Вопрос<select id="detailQuestion"></select></label>
+            <label>Режим<select id="detailMode"></select></label>
+          </div>
+          <div class="btn-wrap">
+            <button id="btnDetail" class="btn-green">Показать выдачу</button>
+            <span class="hint" data-tip="Прогоняет выбранный вопрос через выбранный режим и помечает каждый чанк.">?</span>
+          </div>
+          <div id="detailResult"></div>
+        </div>
+
+        <div class="panel">
+          <h2>Сравнение режимов<span class="hint" data-tip="Прогоняет введённый вопрос по всем пяти режимам поиска. Переключение между режимами — кнопками.">?</span></h2>
+          <label>Вопрос<textarea id="cmpQuery" placeholder="Введите вопрос для сравнения..." style="min-height:60px"></textarea></label>
+          <div class="btn-wrap">
+            <button id="btnAnalyticsCompare" class="btn-violet">Сравнить режимы</button>
+            <span class="hint" data-tip="Показать выдачу всех режимов по этому вопросу.">?</span>
+          </div>
+          <div id="cmpResult"></div>
+        </div>
+      </section>
+
+      <!-- Chat -->
+      <section class="tabpane" id="pane-chat">
+        <div class="panel">
+          <h2>Чат<span class="hint" data-tip="Диалог с базой знаний. История сохраняется между запусками.">?</span></h2>
+          <div class="chat-layout">
+            <div class="chat-sessions">
+              <button id="btnNewChat" class="btn-block">+ Новый диалог</button>
+              <ul id="sessionList"></ul>
+            </div>
+            <div class="chat-main">
+              <div id="chatMessages" class="chat-messages"></div>
+              <div class="chat-input">
+                <textarea id="chatText" rows="2" placeholder="Задайте вопрос по документам…"></textarea>
+                <button id="btnSend">Отправить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

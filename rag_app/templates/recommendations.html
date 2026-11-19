@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Рекомендации — RAG Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◧</span>
+      <div>
+        <h1>Рекомендации по настройкам</h1>
+        <p class="muted">{{ title }}</p>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px">
+      <a href="/" class="btn">← К дашборду</a>
+      <a href="/help" class="btn">Справка</a>
+    </div>
+  </header>
+
+  <main class="main" style="max-width:1100px;margin:0 auto;padding:20px 24px">
+    <div class="panel">
+      <h2>Что перебираем<span class="hint" data-tip="Подбор прогоняет тестовые вопросы (вкладка «Аналитика») по всем комбинациям и ранжирует по выбранной метрике.">?</span></h2>
+      <p class="muted">Оценивается по <strong id="qCount">—</strong> тестовым вопросам. Больше комбинаций — дольше прогон.</p>
+
+      <div class="section">
+        <h3>Embedding-модели<span class="hint" data-tip="Каждая модель = отдельная сборка индекса. Большие модели (BGE-M3) качаются и считаются дольше.">?</span></h3>
+        <div id="embOptions" class="opt-grid"></div>
+      </div>
+
+      <div class="section">
+        <h3>Размеры чанков<span class="hint" data-tip="Перебрать разные chunk_size. Перекрытие берётся из текущих настроек.">?</span></h3>
+        <div id="chunkOptions" class="opt-grid"></div>
+        <label>Свои размеры (через запятую)<input type="text" id="chunkCustom" placeholder="например: 500, 800, 1200"></label>
+      </div>
+
+      <div class="section">
+        <h3>Режимы поиска<span class="hint" data-tip="Какие режимы включать в перебор.">?</span></h3>
+        <div id="modeOptions" class="opt-grid"></div>
+      </div>
+
+      <div class="section row">
+        <label>Метрика ранжирования<span class="hint" data-tip="score_avg = среднее (hit@k, doc_acc@k, recall@k, mrr@k).">?</span>
+          <select id="metric"></select>
+        </label>
+        <label>Температуры multi-query (через запятую)<span class="hint" data-tip="Перебор температур переформулировки для multi_query режимов. Оставьте пустым, чтобы не перебирать.">?</span>
+          <input type="text" id="mqTemps" placeholder="например: 0.2, 0.7">
+        </label>
+      </div>
+
+      <div class="btn-wrap">
+        <button id="btnRun" class="btn-green">Запустить подбор</button>
+        <span class="hint" data-tip="Запускает перебор в фоне; статус обновляется автоматически.">?</span>
+      </div>
+      <div id="sweepProgress" class="muted" style="margin-top:8px"></div>
+    </div>
+
+    <div id="bestPanel" class="panel hidden">
+      <h2>Лучшая конфигурация<span class="hint" data-tip="Победитель перебора по выбранной метрике.">?</span></h2>
+      <div id="bestContent"></div>
+      <div class="btn-wrap">
+        <button id="btnApply" class="btn-green">Применить эти настройки</button>
+        <span class="hint" data-tip="Запишет настройки и пересоберёт индекс. Текущий дашборд начнёт использовать их.">?</span>
+      </div>
+      <div class="btn-wrap">
+        <button id="btnSaveSweep" class="btn-violet">Сохранить лучшее и перебор</button>
+        <span class="hint" data-tip="Сохранит лучшую конфигурацию и полную таблицу перебора в data/recommendations/&lt;дата&gt;/ (JSON + CSV).">?</span>
+      </div>
+      <div id="applyStatus" class="muted" style="margin-top:6px"></div>
+    </div>
+
+    <div id="tablePanel" class="panel hidden">
+      <h2>Все конфигурации<span class="hint" data-tip="Полная таблица результатов, отсортированная по метрике.">?</span></h2>
+      <div id="tableContent"></div>
+    </div>
+  </main>
+
+  <script src="{{ url_for('static', filename='tooltip.js') }}"></script>
+  <script src="{{ url_for('static', filename='recommendations.js') }}"></script>
+</body>
+</html>
